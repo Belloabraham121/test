@@ -38,18 +38,20 @@ contract SwapContract {
     }
 
     /**
-     * @dev Swap USDT for USDTO using Universal Router
+     * @dev Swap USDT for USDTO using Universal Router (V3 concentrated liquidity pool)
      * @param amountIn Amount of USDT to swap
      * @param amountOutMin Minimum amount of USDTO to receive (slippage protection)
      * @param to Address to receive the USDTO tokens
      * @param deadline Transaction deadline timestamp
+     * @param fee Fee tier for the pool (e.g., 100 for 0.01%, 500 for 0.05%, 3000 for 0.3%)
      * @return amountOut Amount of USDTO received
      */
     function swapUSDTToUSDTO(
         uint256 amountIn,
         uint256 amountOutMin,
         address to,
-        uint256 deadline
+        uint256 deadline,
+        uint24 fee
     ) external returns (uint256 amountOut) {
         require(amountIn > 0, "Amount must be greater than 0");
         require(to != address(0), "Invalid recipient address");
@@ -61,29 +63,23 @@ contract SwapContract {
         // Approve Universal Router to spend USDT
         IERC20(USDT).approve(address(UNIVERSAL_ROUTER), amountIn);
 
-        // Build path for V2 swap with stable pool flag
-        address[] memory path = new address[](2);
-        path[0] = USDT;
-        path[1] = USDTO;
+        // Build V3 path: tokenIn (20 bytes) | fee (3 bytes) | tokenOut (20 bytes)
+        bytes memory path = abi.encodePacked(USDT, fee, USDTO);
 
-        // For stablecoin swaps, use stable pool (true)
-        bool[] memory stable = new bool[](1);
-        stable[0] = true; // Use stable pool for USDT <-> USDTO
-
-        // Encode V2 swap input for UniversalRouter
-        // Format: (recipient, amountIn, amountOutMin, path, stable[], payerIsUser)
+        // Encode V3 swap input for UniversalRouter
+        // Format: (recipient, amountIn, amountOutMinimum, path, payer, isUni)
         bytes memory input = abi.encode(
             to, // recipient
             amountIn, // amountIn
-            amountOutMin, // amountOutMin
-            path, // path
-            stable, // stable pool flags
-            false // payerIsUser = false (tokens already in contract)
+            amountOutMin, // amountOutMinimum
+            path, // path as bytes
+            address(this), // payer (tokens are in this contract)
+            false // isUni = false (Velodrome pool, not Uniswap)
         );
 
         // Build commands and inputs
         bytes memory commands = abi.encodePacked(
-            bytes1(uint8(Commands.V2_SWAP_EXACT_IN))
+            bytes1(uint8(Commands.V3_SWAP_EXACT_IN))
         );
         bytes[] memory inputs = new bytes[](1);
         inputs[0] = input;
@@ -105,18 +101,20 @@ contract SwapContract {
     }
 
     /**
-     * @dev Swap USDTO for USDT using Universal Router
+     * @dev Swap USDTO for USDT using Universal Router (V3 concentrated liquidity pool)
      * @param amountIn Amount of USDTO to swap
      * @param amountOutMin Minimum amount of USDT to receive (slippage protection)
      * @param to Address to receive the USDT tokens
      * @param deadline Transaction deadline timestamp
+     * @param fee Fee tier for the pool (e.g., 100 for 0.01%, 500 for 0.05%, 3000 for 0.3%)
      * @return amountOut Amount of USDT received
      */
     function swapUSDTOToUSDT(
         uint256 amountIn,
         uint256 amountOutMin,
         address to,
-        uint256 deadline
+        uint256 deadline,
+        uint24 fee
     ) external returns (uint256 amountOut) {
         require(amountIn > 0, "Amount must be greater than 0");
         require(to != address(0), "Invalid recipient address");
@@ -128,28 +126,23 @@ contract SwapContract {
         // Approve Universal Router to spend USDTO
         IERC20(USDTO).approve(address(UNIVERSAL_ROUTER), amountIn);
 
-        // Build path for V2 swap with stable pool flag
-        address[] memory path = new address[](2);
-        path[0] = USDTO;
-        path[1] = USDT;
+        // Build V3 path: tokenIn (20 bytes) | fee (3 bytes) | tokenOut (20 bytes)
+        bytes memory path = abi.encodePacked(USDTO, fee, USDT);
 
-        // For stablecoin swaps, use stable pool (true)
-        bool[] memory stable = new bool[](1);
-        stable[0] = true; // Use stable pool for USDTO <-> USDT
-
-        // Encode V2 swap input for UniversalRouter
+        // Encode V3 swap input for UniversalRouter
+        // Format: (recipient, amountIn, amountOutMinimum, path, payer, isUni)
         bytes memory input = abi.encode(
             to, // recipient
             amountIn, // amountIn
-            amountOutMin, // amountOutMin
-            path, // path
-            stable, // stable pool flags
-            false // payerIsUser = false
+            amountOutMin, // amountOutMinimum
+            path, // path as bytes
+            address(this), // payer (tokens are in this contract)
+            false // isUni = false (Velodrome pool, not Uniswap)
         );
 
         // Build commands and inputs
         bytes memory commands = abi.encodePacked(
-            bytes1(uint8(Commands.V2_SWAP_EXACT_IN))
+            bytes1(uint8(Commands.V3_SWAP_EXACT_IN))
         );
         bytes[] memory inputs = new bytes[](1);
         inputs[0] = input;
@@ -171,7 +164,7 @@ contract SwapContract {
     }
 
     /**
-     * @dev Generic swap function that can swap any two tokens
+     * @dev Generic V2 swap function for Velodrome V2 pools
      * @param tokenIn Address of input token
      * @param tokenOut Address of output token
      * @param amountIn Amount of tokenIn to swap
@@ -181,7 +174,7 @@ contract SwapContract {
      * @param useStable Whether to use stable pool (for Velodrome V2)
      * @return amountOut Amount of tokenOut received
      */
-    function swap(
+    function swapV2(
         address tokenIn,
         address tokenOut,
         uint256 amountIn,
@@ -204,28 +197,93 @@ contract SwapContract {
         // Approve Universal Router to spend tokens
         IERC20(tokenIn).approve(address(UNIVERSAL_ROUTER), amountIn);
 
-        // Build path for V2 swap
-        address[] memory path = new address[](2);
-        path[0] = tokenIn;
-        path[1] = tokenOut;
-
-        // Stable pool flag
-        bool[] memory stable = new bool[](1);
-        stable[0] = useStable;
+        // Build V2 path: tokenIn (20 bytes) | stable (1 byte) | tokenOut (20 bytes)
+        bytes memory path = abi.encodePacked(tokenIn, useStable, tokenOut);
 
         // Encode V2 swap input for UniversalRouter
+        // Format: (recipient, amountIn, amountOutMin, path, payerIsUser)
         bytes memory input = abi.encode(
             to, // recipient
             amountIn, // amountIn
             amountOutMin, // amountOutMin
-            path, // path
-            stable, // stable pool flags
-            false // payerIsUser = false
+            path, // path as bytes (not array)
+            false // payerIsUser = false (tokens already in contract)
         );
 
         // Build commands and inputs
         bytes memory commands = abi.encodePacked(
             bytes1(uint8(Commands.V2_SWAP_EXACT_IN))
+        );
+        bytes[] memory inputs = new bytes[](1);
+        inputs[0] = input;
+
+        // Record balance before swap
+        uint256 balanceBefore = IERC20(tokenOut).balanceOf(to);
+
+        // Execute swap
+        UNIVERSAL_ROUTER.execute(commands, inputs, deadline);
+
+        // Calculate amount received
+        amountOut = IERC20(tokenOut).balanceOf(to) - balanceBefore;
+
+        require(amountOut >= amountOutMin, "Insufficient output amount");
+
+        emit SwapExecuted(msg.sender, tokenIn, tokenOut, amountIn, amountOut);
+
+        return amountOut;
+    }
+
+    /**
+     * @dev Generic V3 swap function for concentrated liquidity pools
+     * @param tokenIn Address of input token
+     * @param tokenOut Address of output token
+     * @param amountIn Amount of tokenIn to swap
+     * @param amountOutMin Minimum amount of tokenOut to receive
+     * @param to Address to receive the output tokens
+     * @param deadline Transaction deadline timestamp
+     * @param fee Fee tier for the pool (e.g., 100 for 0.01%, 500 for 0.05%, 3000 for 0.3%)
+     * @return amountOut Amount of tokenOut received
+     */
+    function swapV3(
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn,
+        uint256 amountOutMin,
+        address to,
+        uint256 deadline,
+        uint24 fee
+    ) external returns (uint256 amountOut) {
+        require(amountIn > 0, "Amount must be greater than 0");
+        require(
+            tokenIn != address(0) && tokenOut != address(0),
+            "Invalid token address"
+        );
+        require(to != address(0), "Invalid recipient address");
+        require(deadline >= block.timestamp, "Deadline has passed");
+
+        // Transfer tokens from user to this contract
+        IERC20(tokenIn).transferFrom(msg.sender, address(this), amountIn);
+
+        // Approve Universal Router to spend tokens
+        IERC20(tokenIn).approve(address(UNIVERSAL_ROUTER), amountIn);
+
+        // Build V3 path: tokenIn (20 bytes) | fee (3 bytes) | tokenOut (20 bytes)
+        bytes memory path = abi.encodePacked(tokenIn, fee, tokenOut);
+
+        // Encode V3 swap input for UniversalRouter
+        // Format: (recipient, amountIn, amountOutMinimum, path, payer, isUni)
+        bytes memory input = abi.encode(
+            to, // recipient
+            amountIn, // amountIn
+            amountOutMin, // amountOutMinimum
+            path, // path as bytes
+            address(this), // payer (tokens are in this contract)
+            false // isUni = false (Velodrome pool, not Uniswap)
+        );
+
+        // Build commands and inputs
+        bytes memory commands = abi.encodePacked(
+            bytes1(uint8(Commands.V3_SWAP_EXACT_IN))
         );
         bytes[] memory inputs = new bytes[](1);
         inputs[0] = input;
