@@ -43,7 +43,7 @@ contract SwapContract {
      * @param amountOutMin Minimum amount of USDTO to receive (slippage protection)
      * @param to Address to receive the USDTO tokens
      * @param deadline Transaction deadline timestamp
-     * @param fee Fee tier for the pool (e.g., 100 for 0.01%, 500 for 0.05%, 3000 for 0.3%)
+     * @param tickSpacing Tick spacing for the Velodrome V3 pool
      * @return amountOut Amount of USDTO received
      */
     function swapUSDTToUSDTO(
@@ -51,7 +51,7 @@ contract SwapContract {
         uint256 amountOutMin,
         address to,
         uint256 deadline,
-        uint24 fee
+        uint24 tickSpacing
     ) external returns (uint256 amountOut) {
         require(amountIn > 0, "Amount must be greater than 0");
         require(to != address(0), "Invalid recipient address");
@@ -63,8 +63,8 @@ contract SwapContract {
         // Approve Universal Router to spend USDT
         IERC20(USDT).approve(address(UNIVERSAL_ROUTER), amountIn);
 
-        // Build V3 path: tokenIn (20 bytes) | fee (3 bytes) | tokenOut (20 bytes)
-        bytes memory path = abi.encodePacked(USDT, fee, USDTO);
+        // Build V3 path: tokenIn (20 bytes) | tickSpacing (3 bytes) | tokenOut (20 bytes)
+        bytes memory path = abi.encodePacked(USDT, tickSpacing, USDTO);
 
         // Encode V3 swap input for UniversalRouter
         // Format: (recipient, amountIn, amountOutMinimum, path, payer, isUni)
@@ -106,7 +106,7 @@ contract SwapContract {
      * @param amountOutMin Minimum amount of USDT to receive (slippage protection)
      * @param to Address to receive the USDT tokens
      * @param deadline Transaction deadline timestamp
-     * @param fee Fee tier for the pool (e.g., 100 for 0.01%, 500 for 0.05%, 3000 for 0.3%)
+     * @param tickSpacing Tick spacing for the Velodrome V3 pool
      * @return amountOut Amount of USDT received
      */
     function swapUSDTOToUSDT(
@@ -114,7 +114,7 @@ contract SwapContract {
         uint256 amountOutMin,
         address to,
         uint256 deadline,
-        uint24 fee
+        uint24 tickSpacing
     ) external returns (uint256 amountOut) {
         require(amountIn > 0, "Amount must be greater than 0");
         require(to != address(0), "Invalid recipient address");
@@ -126,8 +126,8 @@ contract SwapContract {
         // Approve Universal Router to spend USDTO
         IERC20(USDTO).approve(address(UNIVERSAL_ROUTER), amountIn);
 
-        // Build V3 path: tokenIn (20 bytes) | fee (3 bytes) | tokenOut (20 bytes)
-        bytes memory path = abi.encodePacked(USDTO, fee, USDT);
+        // Build V3 path: tokenIn (20 bytes) | tickSpacing (3 bytes) | tokenOut (20 bytes)
+        bytes memory path = abi.encodePacked(USDTO, tickSpacing, USDT);
 
         // Encode V3 swap input for UniversalRouter
         // Format: (recipient, amountIn, amountOutMinimum, path, payer, isUni)
@@ -241,7 +241,7 @@ contract SwapContract {
      * @param amountOutMin Minimum amount of tokenOut to receive
      * @param to Address to receive the output tokens
      * @param deadline Transaction deadline timestamp
-     * @param fee Fee tier for the pool (e.g., 100 for 0.01%, 500 for 0.05%, 3000 for 0.3%)
+     * @param tickSpacing Tick spacing for the Velodrome V3 pool
      * @return amountOut Amount of tokenOut received
      */
     function swapV3(
@@ -251,7 +251,7 @@ contract SwapContract {
         uint256 amountOutMin,
         address to,
         uint256 deadline,
-        uint24 fee
+        uint24 tickSpacing
     ) external returns (uint256 amountOut) {
         require(amountIn > 0, "Amount must be greater than 0");
         require(
@@ -267,8 +267,8 @@ contract SwapContract {
         // Approve Universal Router to spend tokens
         IERC20(tokenIn).approve(address(UNIVERSAL_ROUTER), amountIn);
 
-        // Build V3 path: tokenIn (20 bytes) | fee (3 bytes) | tokenOut (20 bytes)
-        bytes memory path = abi.encodePacked(tokenIn, fee, tokenOut);
+        // Build V3 path: tokenIn (20 bytes) | tickSpacing (3 bytes) | tokenOut (20 bytes)
+        bytes memory path = abi.encodePacked(tokenIn, tickSpacing, tokenOut);
 
         // Encode V3 swap input for UniversalRouter
         // Format: (recipient, amountIn, amountOutMinimum, path, payer, isUni)

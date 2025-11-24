@@ -10,7 +10,7 @@ contract SwapContractTest is Test {
     SwapContract public swapContract;
 
     address public constant UNIVERSAL_ROUTER =
-        0x01D40099fCD87C018969B0e8D4aB1633Fb34763C;
+        0x63951637d667f23D5251DEdc0f9123D22d8595be;
     address public constant USDT = 0x05D032ac25d322df992303dCa074EE7392C117b9;
     address public constant USDTO = 0x43F2376D5D03553aE72F4A8093bbe9de4336EB08;
 
@@ -19,7 +19,7 @@ contract SwapContractTest is Test {
 
     uint256 public constant AMOUNT_IN = 1000 * 10 ** 6;
     uint256 public constant SLIPPAGE_BPS = 50;
-    uint24 public constant POOL_FEE = 500;
+    uint24 public constant TICK_SPACING = 1;
     uint256 public deadline;
 
     IERC20 public usdtToken;
@@ -93,7 +93,7 @@ contract SwapContractTest is Test {
             amountOutMin,
             recipient,
             deadline,
-            POOL_FEE
+            TICK_SPACING
         );
 
         uint256 usdtBalanceAfter = usdtToken.balanceOf(userWithBalance);
@@ -143,7 +143,7 @@ contract SwapContractTest is Test {
             amountOutMin,
             recipient,
             deadline,
-            POOL_FEE
+            TICK_SPACING
         );
 
         uint256 usdtoBalanceAfter = usdtoToken.balanceOf(userWithBalance);
@@ -168,7 +168,7 @@ contract SwapContractTest is Test {
         vm.startPrank(user);
 
         vm.expectRevert("Amount must be greater than 0");
-        swapContract.swapUSDTToUSDTO(0, 0, recipient, deadline, POOL_FEE);
+        swapContract.swapUSDTToUSDTO(0, 0, recipient, deadline, TICK_SPACING);
 
         vm.stopPrank();
     }
@@ -182,7 +182,7 @@ contract SwapContractTest is Test {
             0,
             address(0),
             deadline,
-            POOL_FEE
+            TICK_SPACING
         );
 
         vm.stopPrank();
@@ -199,7 +199,7 @@ contract SwapContractTest is Test {
             0,
             recipient,
             pastDeadline,
-            POOL_FEE
+            TICK_SPACING
         );
 
         vm.stopPrank();
@@ -225,7 +225,7 @@ contract SwapContractTest is Test {
             unreasonablyHighMin,
             recipient,
             deadline,
-            POOL_FEE
+            TICK_SPACING
         );
 
         vm.stopPrank();
@@ -255,7 +255,7 @@ contract SwapContractTest is Test {
             amountOutMin,
             recipient,
             deadline,
-            POOL_FEE
+            TICK_SPACING
         );
 
         uint256 usdtBalanceAfter = usdtToken.balanceOf(userWithBalance);
@@ -335,7 +335,7 @@ contract SwapContractTest is Test {
             amountOutMin,
             recipient,
             deadline,
-            POOL_FEE
+            TICK_SPACING
         );
 
         uint256 usdtBalanceAfter = usdtToken.balanceOf(user);
